@@ -1,0 +1,20 @@
+Flask
+Flask-SQLAlchemy
+cryptography
+psycopg2-binary
+
+# install
+# CREATE DATABASE flaskapp_db;
+# CREATE USER flaskuser WITH PASSWORD '123';
+# ALTER ROLE flaskuser SET client_encoding TO 'utf8';
+# ALTER ROLE flaskuser SET default_transaction_isolation TO 'read committed';
+# ALTER ROLE flaskuser SET timezone TO 'UTC';
+# GRANT ALL PRIVILEGES ON DATABASE flaskapp_db TO flaskuser;
+
+# GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO flaskuser;
+# GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO flaskuser;
+# GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO flaskuser;
+
+# flask db init
+# flask db migrate -m "Add file_data column to uploaded_file"
+# flask db upgrade

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Upload File untuk Enkripsi/Dekripsi</h1>
+<form action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data">
+    <label for="file">Pilih file:</label>
+    <input type="file" name="file" id="file" required>
+    <label for="encryption_method">Pilih metode enkripsi:</label>
+    <select name="encryption_method" id="encryption_method" required>
+        <option value="AES">AES</option>
+        <option value="DES">DES</option>
+        <option value="RC4">RC4</option>
+    </select>
+    <button type="submit">Upload dan Enkripsi</button>
+</form>
+<h2>Daftar File Terunggah</h2>
+<table style="width: 100%; border-collapse: collapse;">
+    <thead>
+        <tr style="background-color: #f2f2f2;">
+            <th style="border: 1px solid #dddddd; padding: 8px; text-align: left;">Filename</th>
+            <th style="border: 1px solid #dddddd; padding: 8px; text-align: left;">Metode Enkripsi</th>
+            <th style="border: 1px solid #dddddd; padding: 8px; text-align: left;">Ukuran File</th>
+            <th style="border: 1px solid #dddddd; padding: 8px; text-align: left;">Waktu Enkripsi</th>
+            <th style="border: 1px solid #dddddd; padding: 8px; text-align: left;">Waktu Dekripsi</th>
+            <th style="border: 1px solid #dddddd; padding: 8px; text-align: left;">Aksi</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for file in files %}
+        <tr>
+            <td style="border: 1px solid #dddddd; padding: 8px;">{{ file.filename }}</td>
+            <td style="border: 1px solid #dddddd; padding: 8px;">{{ file.encryption_method }}</td>
+            <td style="border: 1px solid #dddddd; padding: 8px;">{{ file.size }} bytes</td>
+            <td style="border: 1px solid #dddddd; padding: 8px;">{{ file.encryption_time }} detik</td>
+            <td style="border: 1px solid #dddddd; padding: 8px;">{{ file.decryption_time }} detik</td>
+            <td style="border: 1px solid #dddddd; padding: 8px;">
+                <form action="{{ url_for('download_file', file_id=file.id) }}" method="get" onsubmit="return false;">
+                    <label for="number">Times :</label>
+                    <input type="number" id="number" name="number" min="1" max="10" default="1" required>
+                    <button type="button" class="download-measure">Download & Measure</button>
+                </form>
+                <form action="{{ url_for('delete_file', file_id=file.id) }}" method="post">
+                    <button type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const buttons = document.querySelectorAll('.download-measure');
+        console.log('Buttons found:', buttons.length); // Check how many buttons are being targeted
+    
+        buttons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault(); // Stop the form from submitting traditionally
+                const times = parseInt(this.previousElementSibling.value, 10);
+                const fileUrl = this.form.action;
+                console.log("Download will be triggered for:", fileUrl, "Times:", times); // Check if data is correct
+                downloadAndMeasure(fileUrl, times);
+            });
+        });
+    });
+    
+    
+    function downloadAndMeasure(fileUrl, times) {
+        console.log("Starting download measurement for URL: " + fileUrl + " with times: " + times);
+        let downloadTimes = [];
+
+        function startDownload(index) {
+            if (index >= times) {
+                const averageTime = downloadTimes.reduce((a, b) => a + b, 0) / times;
+                console.log('Average download time:', averageTime, 'ms');
+                return;
+            }
+
+            const startTime = performance.now();
+            fetch(fileUrl, { credentials: 'include' })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to download');
+                    // Extract the filename from the Content-Disposition header if present
+                    const disposition = response.headers.get('Content-Disposition');
+                    let filename = `download_${index + 1}.bin`; // Default name if not specified
+
+                    if (disposition && disposition.indexOf('filename=') !== -1) {
+                        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                        const matches = filenameRegex.exec(disposition);
+                        if (matches != null && matches[1]) {
+                            filename = matches[1].replace(/['"]/g, '');
+                        }
+                    }
+
+                    return response.blob().then(blob => ({ blob, filename }));
+                })
+                .then(({ blob, filename }) => {
+                    const endTime = performance.now();
+                    const timeTaken = endTime - startTime;
+                    downloadTimes.push(timeTaken);
+                    console.log(`Download ${index + 1} took ${timeTaken} ms`);
+
+                    // Create a download link and trigger the download
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename; // Use the filename extracted from the headers or default
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    // Continue with the next download
+                    startDownload(index + 1);
+                })
+                .catch(error => {
+                    console.error('Download failed:', error);
+                });
+        }
+
+        startDownload(0);
+    }
+
+</script>
+{% endblock %}
